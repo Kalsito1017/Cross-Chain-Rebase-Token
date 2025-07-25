@@ -154,42 +154,70 @@ contract RebaseTokenTest is Test {
         );
         rebaseToken.setInterestRate(newInteresetRate); // Attempt to set the interest rate as a non-owner
     }
+    /// @notice Tests that only accounts with the mint and burn role can call mint and burn functions.
     function testCannotCallMintAndBurn() public {
+        // Set the caller to 'user' (not authorized)
         vm.prank(user);
+        // Expect a revert with the AccessControl unauthorized account selector when calling mint
         vm.expectPartialRevert(
             bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector)
         );
+        // Attempt to mint tokens as a non-authorized user
         rebaseToken.mint(user, 100);
+        // Expect a revert with the AccessControl unauthorized account selector when calling burn
         vm.expectPartialRevert(
             bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector)
         );
+        // Attempt to burn tokens as a non-authorized user
         rebaseToken.burn(user, 100);
     }
+
+    /// @notice Tests that principalBalanceOf returns the correct principal amount after deposit and after time passes.
+    /// @param amount The amount to deposit and check principal for.
     function testGetPrincipleAmount(uint256 amount) public {
+        // Bound the deposit amount to a reasonable range
         amount = bound(amount, 1e5, type(uint96).max);
+        // Give the user the deposit amount
         vm.deal(user, amount);
+        // Set the caller to 'user'
         vm.prank(user);
+        // Deposit the amount into the vault
         vault.deposit{value: amount}();
+        // Assert that the principal balance equals the deposited amount
         assertEq(rebaseToken.principalBalanceOf(user), amount);
 
+        // Warp time forward by 1 hour
         vm.warp(block.timestamp + 1 hours);
+        // Assert that the principal balance remains unchanged after time passes
         assertEq(rebaseToken.principalBalanceOf(user), amount);
     }
+
+    /// @notice Tests that the vault returns the correct rebase token address.
     function testGetRebaseTokenAddress() public view {
+        // Assert that the vault's rebase token address matches the deployed rebaseToken address
         assertEq(vault.getRebaseTokenAddress(), address(rebaseToken));
     }
+
+    /// @notice Tests that the interest rate can only be decreased, not increased.
+    /// @param newInterestRate The new interest rate to attempt to set (should be higher than current).
     function testInterestRateCanOnlyDecrease(uint256 newInterestRate) public {
+        // Get the initial interest rate
         uint256 initialInterestRate = rebaseToken.getInterestRate();
+        // Bound the new interest rate to be greater than the initial rate
         newInterestRate = bound(
             newInterestRate,
             initialInterestRate + 1,
             type(uint96).max
         );
+        // Set the caller to 'owner'
         vm.prank(owner);
+        // Expect a revert with the custom error selector when trying to increase the rate
         vm.expectPartialRevert(
             bytes4(RebaseToken.RebaseToken__InterestRateDecreaseOnly.selector)
         );
+        // Attempt to set the interest rate to a higher value
         rebaseToken.setInterestRate(newInterestRate);
+        // Assert that the interest rate remains unchanged
         assertEq(rebaseToken.getInterestRate(), initialInterestRate);
     }
 }

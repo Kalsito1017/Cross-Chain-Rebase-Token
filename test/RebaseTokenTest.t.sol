@@ -7,6 +7,8 @@ import {Vault} from "src/Vault.sol";
 import {IRebaseToken} from "src/interfaces/IRebaseToken.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {StdAssertions} from "lib/forge-std/test/StdAssertions.t.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract RebaseTokenTest is Test {
     RebaseToken private rebaseToken;
@@ -80,8 +82,8 @@ contract RebaseTokenTest is Test {
         uint256 depositAmount,
         uint256 time
     ) public {
-        time = bound(time, 1000, type(uint96).max);
-        depositAmount = bound(depositAmount, 1e5, type(uint96).max);
+        time = bound(time, 1000, type(uint96).max); // this is a crazy number of years - 2^96 seconds is a lot
+        depositAmount = bound(depositAmount, 1e5, type(uint96).max); // this is an Ether value of max 2^78 which is crazy
 
         // Deposit funds
         vm.deal(user, depositAmount);
@@ -98,8 +100,6 @@ contract RebaseTokenTest is Test {
         vm.deal(owner, balance - depositAmount);
         vm.prank(owner);
         addRewardsToVault(balance - depositAmount);
-
-        // Redeem funds
         vm.prank(user);
         vault.redeem(balance);
 
@@ -142,5 +142,54 @@ contract RebaseTokenTest is Test {
 
         // Check interest rates stayed fixed after transfer
         assertEq(rebaseToken.getInterestRate(), 4e10); // Check updated global rate
+    }
+    /// @notice Tests that only the owner can set the interest rate; expects revert if called by non-owner.
+    /// @param newInteresetRate The new interest rate to attempt to set.
+
+    function testCannotSetInteresetRate(uint256 newInteresetRate) public {
+        vm.prank(user); // Set the caller to 'user' (not the contract owner)
+
+        vm.expectPartialRevert(
+            bytes4(Ownable.OwnableUnauthorizedAccount.selector) // Expect a revert with the Ownable unauthorized account selector
+        );
+        rebaseToken.setInterestRate(newInteresetRate); // Attempt to set the interest rate as a non-owner
+    }
+    function testCannotCallMintAndBurn() public {
+        vm.prank(user);
+        vm.expectPartialRevert(
+            bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector)
+        );
+        rebaseToken.mint(user, 100);
+        vm.expectPartialRevert(
+            bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector)
+        );
+        rebaseToken.burn(user, 100);
+    }
+    function testGetPrincipleAmount(uint256 amount) public {
+        amount = bound(amount, 1e5, type(uint96).max);
+        vm.deal(user, amount);
+        vm.prank(user);
+        vault.deposit{value: amount}();
+        assertEq(rebaseToken.principalBalanceOf(user), amount);
+
+        vm.warp(block.timestamp + 1 hours);
+        assertEq(rebaseToken.principalBalanceOf(user), amount);
+    }
+    function testGetRebaseTokenAddress() public view {
+        assertEq(vault.getRebaseTokenAddress(), address(rebaseToken));
+    }
+    function testInterestRateCanOnlyDecrease(uint256 newInterestRate) public {
+        uint256 initialInterestRate = rebaseToken.getInterestRate();
+        newInterestRate = bound(
+            newInterestRate,
+            initialInterestRate + 1,
+            type(uint96).max
+        );
+        vm.prank(owner);
+        vm.expectPartialRevert(
+            bytes4(RebaseToken.RebaseToken__InterestRateDecreaseOnly.selector)
+        );
+        rebaseToken.setInterestRate(newInterestRate);
+        assertEq(rebaseToken.getInterestRate(), initialInterestRate);
     }
 }

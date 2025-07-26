@@ -34,32 +34,54 @@ contract RebaseTokenTest is Test {
         vm.stopPrank();
     }
 
-    /// @notice Test that user balance increases linearly over time due to rebase
+    /// @notice Tests that the user's rebase token balance increases linearly over time after depositing ETH
+    /// @dev
+    /// - Deposits a bounded ETH amount into the vault
+    /// - Simulates time progression using `vm.warp`
+    /// - Checks that balance grows linearly over each hour due to rebase
+    /// @param amount The ETH amount to deposit, bounded between a constant and uint80 max
     function testDepositLinear(uint256 amount) public {
+        // Bound the amount to ensure it is within a safe testing range
         amount = bound(amount, LIMITED_AMOUNT_TO_DEPOSIT, type(uint80).max);
+
+        // Begin acting as the `user` address
         vm.startPrank(user);
+
+        // Give the user the test ETH to deposit
         vm.deal(user, amount);
+
+        // Deposit ETH into the vault — should mint rebase tokens
         vault.deposit{value: amount}();
 
+        // Capture the user’s balance immediately after deposit
         uint256 startingBalance = rebaseToken.balanceOf(user);
         console.log("User's starting balance: ", startingBalance);
+
+        // Ensure the minted rebase tokens equal the amount deposited
         assertEq(startingBalance, amount);
 
+        // Advance time by 1 hour
         vm.warp(block.timestamp + 1 hours);
+
+        // Check balance after 1 hour — should have increased due to rebase
         uint256 middleBalance = rebaseToken.balanceOf(user);
         assertGt(middleBalance, startingBalance);
 
+        // Advance time by another hour (2 hours total)
         vm.warp(block.timestamp + 1 hours);
+
+        // Check balance after 2 hours — should be greater than after 1 hour
         uint256 endingBalance = rebaseToken.balanceOf(user);
         assertGt(endingBalance, middleBalance);
 
-        // Validate linear rebase increase
+        // Ensure the increase is linear (same amount per hour) within ±1 unit
         assertApproxEqAbs(
             endingBalance - middleBalance,
             middleBalance - startingBalance,
             1
         );
 
+        // Stop acting as `user`
         vm.stopPrank();
     }
 

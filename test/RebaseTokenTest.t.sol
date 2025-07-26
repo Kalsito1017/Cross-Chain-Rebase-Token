@@ -155,22 +155,41 @@ contract RebaseTokenTest is Test {
         );
         rebaseToken.setInterestRate(newInteresetRate); // Attempt to set the interest rate as a non-owner
     }
+    /// @notice Tests that calling `mint` directly on the rebaseToken contract reverts
+    /// @dev The user tries to mint directly, which should not be allowed
     function testCannotCallMint() public {
-        // Deposit funds
+        // Set the sender of the next transaction to `user`
         vm.startPrank(user);
+
+        // Get the current interest rate from the rebaseToken
         uint256 interestRate = rebaseToken.getInterestRate();
+
+        // Expect the next call to revert (i.e., it should fail)
         vm.expectRevert();
+
+        // Attempt to call mint directly; this should fail
         rebaseToken.mint(user, SEND_VALUE, interestRate);
+
+        // Stop impersonating `user`
         vm.stopPrank();
     }
 
+    /// @notice Tests that calling `burn` directly on the rebaseToken contract reverts
+    /// @dev The user tries to burn tokens directly, which should not be allowed
     function testCannotCallBurn() public {
-        // Deposit funds
+        // Set the sender of the next transaction to `user`
         vm.startPrank(user);
+
+        // Expect the next call to revert (i.e., it should fail)
         vm.expectRevert();
+
+        // Attempt to call burn directly; this should fail
         rebaseToken.burn(user, SEND_VALUE);
+
+        // Stop impersonating `user`
         vm.stopPrank();
     }
+
     /// @notice Tests that principalBalanceOf returns the correct principal amount after deposit and after time passes.
     /// @param amount The amount to deposit and check principal for.
     function testGetPrincipleAmount(uint256 amount) public {

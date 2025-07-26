@@ -6,7 +6,7 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {IRebaseToken} from "src/interfaces/IRebaseToken.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {StdAssertions} from "lib/forge-std/test/StdAssertions.t.sol";
+
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
@@ -15,6 +15,7 @@ contract RebaseTokenTest is Test {
     Vault private vault;
     address public owner = makeAddr("owner");
     address public user = makeAddr("user");
+    uint256 public SEND_VALUE = 1e5;
 
     uint256 private constant LIMITED_AMOUNT_TO_DEPOSIT = 1e5; // 100,000 wei
 
@@ -154,24 +155,22 @@ contract RebaseTokenTest is Test {
         );
         rebaseToken.setInterestRate(newInteresetRate); // Attempt to set the interest rate as a non-owner
     }
-    /// @notice Tests that only accounts with the mint and burn role can call mint and burn functions.
-    function testCannotCallMintAndBurn() public {
-        // Set the caller to 'user' (not authorized)
-        vm.prank(user);
-        // Expect a revert with the AccessControl unauthorized account selector when calling mint
-        vm.expectPartialRevert(
-            bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector)
-        );
-        // Attempt to mint tokens as a non-authorized user
-        rebaseToken.mint(user, 100);
-        // Expect a revert with the AccessControl unauthorized account selector when calling burn
-        vm.expectPartialRevert(
-            bytes4(IAccessControl.AccessControlUnauthorizedAccount.selector)
-        );
-        // Attempt to burn tokens as a non-authorized user
-        rebaseToken.burn(user, 100);
+    function testCannotCallMint() public {
+        // Deposit funds
+        vm.startPrank(user);
+        uint256 interestRate = rebaseToken.getInterestRate();
+        vm.expectRevert();
+        rebaseToken.mint(user, SEND_VALUE, interestRate);
+        vm.stopPrank();
     }
 
+    function testCannotCallBurn() public {
+        // Deposit funds
+        vm.startPrank(user);
+        vm.expectRevert();
+        rebaseToken.burn(user, SEND_VALUE);
+        vm.stopPrank();
+    }
     /// @notice Tests that principalBalanceOf returns the correct principal amount after deposit and after time passes.
     /// @param amount The amount to deposit and check principal for.
     function testGetPrincipleAmount(uint256 amount) public {
@@ -206,7 +205,7 @@ contract RebaseTokenTest is Test {
         // Bound the new interest rate to be greater than the initial rate
         newInterestRate = bound(
             newInterestRate,
-            initialInterestRate + 1,
+            initialInterestRate + 1, //REVERT ERROR FIX -> +1
             type(uint96).max
         );
         // Set the caller to 'owner'

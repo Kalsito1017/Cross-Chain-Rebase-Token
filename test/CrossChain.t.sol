@@ -140,156 +140,136 @@ contract CrossChainTest is Test {
         );
         vm.stopPrank();
     }
-    /// @notice Configures a local token pool to recognize and interact with a remote token pool on another chain.
-    /// @dev Adds a remote chain/pool mapping with basic (disabled) rate limiter configs.
-    /// @param fork The fork ID representing the local blockchain network to select.
-    /// @param localPool The address of the TokenPool contract deployed on the local chain.
-    /// @param remoteChainSelector The Chain Selector ID of the remote chain (used by CCIP).
-    /// @param remotePool The address of the TokenPool contract deployed on the remote chain.
-    /// @param remoteTokenAddress The address of the token on the remote chain associated with the pool.
+    /**
+     * @notice Configures a token pool for cross-chain communication.
+     * @dev Sets up the remote pool and token addresses for a given fork and chain selector.
+     * @param fork The fork ID to select (chain to configure).
+     * @param localPool The address of the local token pool contract.
+     * @param remoteChainSelector The chain selector for the remote chain.
+     * @param remotePool The address of the remote token pool contract.
+     * @param remoteTokenAddress The address of the remote token contract.
+     */
     function configureTokenPool(
-        uint256 fork,
-        address localPool,
-        uint64 remoteChainSelector,
-        address remotePool,
-        address remoteTokenAddress
+        uint256 fork, // The fork ID to select
+        address localPool, // The address of the local token pool
+        uint64 remoteChainSelector, // The selector for the remote chain
+        address remotePool, // The address of the remote pool
+        address remoteTokenAddress // The address of the remote token
     ) public {
-        // Select the local fork to simulate actions on the source chain
-        vm.selectFork(fork);
+        vm.selectFork(fork); // Switch to the specified fork (chain)
+        vm.prank(owner); // Execute the following as the owner
 
-        // Simulate the transaction as the contract owner
-        vm.prank(owner);
+        bytes[] memory remotePoolAddresses = new bytes[](1); // Create an array for remote pool addresses
+        remotePoolAddresses[0] = abi.encode(remotePool); // Encode the remote pool address
 
-        // Prepare array containing the encoded remote pool address
-        bytes;
-        remotePoolAddresses[0] = abi.encode(remotePool);
-
-        // Define the remote chain config to be added to the local pool
-        TokenPool.ChainUpdate;
+        TokenPool.ChainUpdate[]
+            memory chainsToAdd = new TokenPool.ChainUpdate[](1); // Create an array for chain updates
         chainsToAdd[0] = TokenPool.ChainUpdate({
-            remoteChainSelector: remoteChainSelector, // Unique ID of the remote chain
-            remotePoolAddresses: remotePoolAddresses, // Encoded remote pool address(es)
-            remoteTokenAddress: abi.encode(remoteTokenAddress), // Encoded remote token address
+            remoteChainSelector: remoteChainSelector, // Set the remote chain selector
+            remotePoolAddresses: remotePoolAddresses, // Set the remote pool addresses
+            remoteTokenAddress: abi.encode(remoteTokenAddress), // Encode and set the remote token address
             outboundRateLimiterConfig: RateLimiter.Config({
-                isEnabled: false, // No outbound rate limiting
-                capacity: 0,
-                rate: 0
+                isEnabled: false, // Disable outbound rate limiter
+                capacity: 0, // Set outbound capacity to 0
+                rate: 0 // Set outbound rate to 0
             }),
             inboundRateLimiterConfig: RateLimiter.Config({
-                isEnabled: false, // No inbound rate limiting
-                capacity: 0,
-                rate: 0
+                isEnabled: false, // Disable inbound rate limiter
+                capacity: 0, // Set inbound capacity to 0
+                rate: 0 // Set inbound rate to 0
             })
         });
 
-        // Apply the remote chain configuration to the local TokenPool contract
-        // No removals; only additions
-        TokenPool(localPool).applyChainUpdates(new uint64, chainsToAdd);
+        TokenPool(localPool).applyChainUpdates(new uint64[](0), chainsToAdd); // Apply the chain updates to the local pool
     }
-
-    /// @notice Simulates bridging tokens between two forks using Chainlink CCIP in a local test environment.
-    /// @dev This function simulates a cross-chain token transfer, checks balances and user interest rates pre- and post-bridge.
-    /// @param amountToBridge The amount of tokens to bridge from the local to the remote chain.
-    /// @param localFork The fork ID of the source chain.
-    /// @param remoteFork The fork ID of the destination chain.
-    /// @param localNetworkDetails Metadata for the local network (router, LINK, etc).
-    /// @param remoteNetworkDetails Metadata for the remote network (router, LINK, etc).
-    /// @param localToken The RebaseToken instance deployed on the local fork.
-    /// @param remoteToken The RebaseToken instance deployed on the remote fork.
+    /**
+     * @notice Bridges tokens from a local chain to a remote chain using CCIP.
+     * @dev Handles approval, fee payment, and message routing for cross-chain token transfer.
+     * @param amountToBridge The amount of tokens to bridge.
+     * @param localFork The fork ID of the local chain.
+     * @param remoteFork The fork ID of the remote chain.
+     * @param localNetworkDetails Network details for the local chain.
+     * @param remoteNetworkDetails Network details for the remote chain.
+     * @param localToken The token contract on the local chain.
+     * @param remoteToken The token contract on the remote chain.
+     */
     function bridgeTokens(
-        uint256 amountToBridge,
-        uint256 localFork,
-        uint256 remoteFork,
-        Register.NetworkDetails memory localNetworkDetails,
-        Register.NetworkDetails memory remoteNetworkDetails,
-        RebaseToken localToken,
-        RebaseToken remoteToken
+        uint256 amountToBridge, // Amount of tokens to bridge
+        uint256 localFork, // Fork ID for the local chain
+        uint256 remoteFork, // Fork ID for the remote chain
+        Register.NetworkDetails memory localNetworkDetails, // Local chain network details
+        Register.NetworkDetails memory remoteNetworkDetails, // Remote chain network details
+        RebaseToken localToken, // Local chain token contract
+        RebaseToken remoteToken // Remote chain token contract
     ) public {
-        // Switch to local fork
-        vm.selectFork(localFork);
+        vm.selectFork(localFork); // Switch to the local chain fork
+        vm.startPrank(user); // Start transaction as the user
 
-        // Start simulating transactions from the user address
-        vm.startPrank(user);
-
-        // Prepare token transfer array
-        Client.EVMTokenAmount;
+        Client.EVMTokenAmount[]
+            memory tokenAmounts = new Client.EVMTokenAmount[](1); // Create array for token amounts
         tokenAmounts[0] = Client.EVMTokenAmount({
-            token: address(localToken),
-            amount: amountToBridge
+            token: address(localToken), // Set token address
+            amount: amountToBridge // Set amount to bridge
         });
 
-        // Construct the CCIP message with empty payload and token transfer
+        // Construct the CCIP message for cross-chain transfer
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(user), // Address to receive tokens on remote chain
-            data: "", // No extra data
-            tokenAmounts: tokenAmounts,
-            feeToken: localNetworkDetails.linkAddress, // Use LINK to pay for the CCIP fee
-            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 0})) // Default extra args
+            receiver: abi.encode(user), // Encode user address as receiver on destination chain
+            data: "", // No additional data payload
+            tokenAmounts: tokenAmounts, // Token transfer details
+            feeToken: localNetworkDetails.linkAddress, // Use LINK as fee token
+            extraArgs: Client._argsToBytes(Client.EVMExtraArgsV1({gasLimit: 0})) // Extra arguments (gas limit 0)
         });
 
-        // End prank
-        vm.stopPrank();
+        vm.stopPrank(); // Stop transaction as the user
 
-        // Get estimated LINK fee from the router for the message
         uint256 fee = IRouterClient(localNetworkDetails.routerAddress).getFee(
-            remoteNetworkDetails.chainSelector,
-            message
-        );
+            remoteNetworkDetails.chainSelector, // Destination chain selector
+            message // CCIP message
+        ); // Query the fee for the cross-chain message
 
-        // Request LINK from faucet for the user
-        ccipLocalSimulatorFork.requestLinkFromFaucet(user, fee);
+        ccipLocalSimulatorFork.requestLinkFromFaucet(user, fee); // Fund user with LINK for fee
 
-        // Approve LINK for router to cover fee
-        vm.prank(user);
+        vm.prank(user); // Next call as user
         IERC20(localNetworkDetails.linkAddress).approve(
-            localNetworkDetails.routerAddress,
-            fee
+            localNetworkDetails.routerAddress, // Approve router to spend LINK
+            fee // Amount to approve
         );
 
-        // Approve token transfer to router
-        vm.prank(user);
+        vm.prank(user); // Next call as user
         IERC20(address(localToken)).approve(
-            localNetworkDetails.routerAddress,
-            amountToBridge
+            localNetworkDetails.routerAddress, // Approve router to spend tokens
+            amountToBridge // Amount to approve
         );
 
-        // Record balance before bridging
-        uint256 localBalanceBefore = localToken.balanceOf(user);
+        uint256 localBalanceBefore = localToken.balanceOf(user); // Record user's local token balance before bridging
 
-        // Send the CCIP message
-        vm.prank(user);
+        vm.prank(user); // Next call as user
         IRouterClient(localNetworkDetails.routerAddress).ccipSend{value: 0}(
-            remoteNetworkDetails.chainSelector,
-            message
-        );
+            remoteNetworkDetails.chainSelector, // Destination chain selector
+            message // CCIP message
+        ); // Send the cross-chain message
 
-        // Confirm that the local token balance decreased by the bridged amount
-        uint256 localBalanceAfter = localToken.balanceOf(user);
-        assertEq(localBalanceAfter, localBalanceBefore - amountToBridge);
+        uint256 localBalanceAfter = localToken.balanceOf(user); // Record user's local token balance after bridging
 
-        // Capture user interest rate before switching forks
-        uint256 localUserInteresetRate = localToken.getUserInterestRate(user);
+        assertEq(localBalanceAfter, localBalanceBefore - amountToBridge); // Assert tokens were deducted locally
 
-        // Switch to remote fork (destination chain)
-        vm.selectFork(remoteFork);
+        uint256 localUserInteresetRate = localToken.getUserInterestRate(user); // Get user's interest rate on local chain
 
-        // Simulate time passing to accrue interest (if any)
-        vm.warp(block.timestamp + 20 minutes);
+        vm.selectFork(remoteFork); // Switch to the remote chain fork
 
-        // Capture balance before routing message
-        uint256 remoteBalanceBefore = remoteToken.balanceOf(user);
+        vm.warp(block.timestamp + 20 minutes); // Advance time to simulate message arrival
 
-        // Route the message (simulate CCIP delivery)
-        ccipLocalSimulatorFork.switchChainAndRouteMessage(remoteFork);
+        uint256 remoteBalanceBefore = remoteToken.balanceOf(user); // Record user's remote token balance before bridging
 
-        // Capture balance after routing
-        uint256 remoteBalanceAfter = remoteToken.balanceOf(user);
+        ccipLocalSimulatorFork.switchChainAndRouteMessage(remoteFork); // Route the CCIP message to the remote chain
 
-        // Confirm that the remote token balance increased correctly
-        assertEq(remoteBalanceAfter, remoteBalanceBefore + amountToBridge);
+        uint256 remoteBalanceAfter = remoteToken.balanceOf(user); // Record user's remote token balance after bridging
 
-        // Capture and verify that the user's interest rate carried over
-        uint256 remoteUserInteresetRate = remoteToken.getUserInterestRate(user);
-        assertEq(remoteUserInteresetRate, localUserInteresetRate);
+        assertEq(remoteBalanceAfter, remoteBalanceBefore + amountToBridge); // Assert tokens were credited remotely
+
+        uint256 remoteUserInteresetRate = remoteToken.getUserInterestRate(user); // Get user's interest rate on remote chain
+
+        assertEq(remoteUserInteresetRate, localUserInteresetRate); // Assert interest rate is preserved across chains
     }
 }

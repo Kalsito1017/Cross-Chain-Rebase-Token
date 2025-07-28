@@ -42,7 +42,6 @@ Cross-chain bridging retains yield and interest rate using Chainlink's CCIP prot
 ```env
 SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_KEY"
 ARB_SEPOLIA_RPC_URL="https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY"
-PRIVATE_KEY="your_private_key"
 ETHERSCAN_API_KEY="your_etherscan_key" # optional
 ```
 

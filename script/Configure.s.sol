@@ -32,38 +32,27 @@ contract Configure is Script {
         uint128 inboundRateLimiterCapacity,
         uint128 inboundRateLimiterRate
     ) public {
-        // Begin broadcasting the transaction
-        vm.startBroadcast();
-
-        // Encode the remote pool address as bytes (required by TokenPool)
-        bytes;
-        remotePoolAddress[0] = abi.encode(remotePool);
-
-        // Create an array with 1 ChainUpdate instruction
-        TokenPool.ChainUpdate;
-
-        // Fill in the ChainUpdate structure with remote details and rate limiter config
+        vm.startBroadcast(); // Start broadcasting transactions to the network (for Foundry scripts)
+        bytes[] memory remotePoolAddress = new bytes[](1); // Create a dynamic array to hold the encoded remote pool address
+        remotePoolAddress[0] = abi.encode(remotePool); // Encode the remote pool address and store it in the array
+        TokenPool.ChainUpdate[]
+            memory chainsToAdd = new TokenPool.ChainUpdate[](1); // Create an array for chain updates (only one in this case)
         chainsToAdd[0] = TokenPool.ChainUpdate({
-            remoteChainSelector: remoteChainSelector, // Remote chain ID (Chainlink selector)
-            remotePoolAddresses: remotePoolAddress, // Encoded remote pool address
-            remoteTokenAddress: abi.encode(remoteToken), // Encoded token address on remote chain
-            outboundRateLimiterConfig: RateLimiter.Config({ // Outbound rate limiter settings
-                    isEnabled: outboundRateLimiterIsEnable,
-                    capacity: outboundRateLimiterCapacity,
-                    rate: outboundRateLimiterRate
-                }),
-            inboundRateLimiterConfig: RateLimiter.Config({ // Inbound rate limiter settings
-                    isEnabled: inboundRateLimiterIsEnabled,
-                    capacity: inboundRateLimiterCapacity,
-                    rate: inboundRateLimiterRate
-                })
+            remoteChainSelector: remoteChainSelector, // Set the remote chain selector (Chainlink chain ID)
+            remotePoolAddresses: remotePoolAddress, // Set the encoded remote pool address array
+            remoteTokenAddress: abi.encode(remoteToken), // Encode and set the remote token address
+            outboundRateLimiterConfig: RateLimiter.Config({
+                isEnabled: outboundRateLimiterIsEnable, // Enable/disable outbound rate limiter
+                capacity: outboundRateLimiterCapacity, // Set outbound rate limiter capacity
+                rate: outboundRateLimiterRate // Set outbound rate limiter rate (tokens per second)
+            }),
+            inboundRateLimiterConfig: RateLimiter.Config({
+                isEnabled: inboundRateLimiterIsEnabled, // Enable/disable inbound rate limiter
+                capacity: inboundRateLimiterCapacity, // Set inbound rate limiter capacity
+                rate: inboundRateLimiterRate // Set inbound rate limiter rate (tokens per second)
+            })
         });
-
-        // Apply the configuration to the local pool
-        // (removes nothing, adds the one new config)
-        TokenPool(localPool).applyChainUpdates(new uint64, chainsToAdd);
-
-        // Stop broadcasting the transaction
-        vm.stopBroadcast();
+        TokenPool(localPool).applyChainUpdates(new uint64[](0), chainsToAdd); // Apply the chain update to the local token pool (no removals, only additions)
+        vm.stopBroadcast(); // Stop broadcasting transactions
     }
 }

@@ -16,9 +16,7 @@ Cross-chain bridging retains yield and interest rate using Chainlink's CCIP prot
 - [🧾 Usage](#-usage)
 - [📈 Gas Profiling](#-gas-profiling)
 - [📏 Formatting & Linting](#-formatting--linting)
-- [❤️ Contribution](#️-contribution)
 - [🧠 Notes & Assumptions](#-notes--assumptions)
-- [🪪 License](#-license)
 
 ---
 
@@ -139,52 +137,11 @@ Interact with the local CCIP simulator or real Chainlink Router depending on env
 
 ---
 
-## 📈 Gas Profiling
-
-Generate gas usage snapshot:
-
-```bash
-forge snapshot
-```
-
-Outputs a `.gas-snapshot` file comparing function costs.
-
----
-
-## 📏 Formatting & Linting
-
-```bash
-forge fmt         # Auto-format Solidity code
-forge lint        # Lint checks (requires plugin)
-```
-
----
-
-## ❤️ Contribution
-
-Contributions are welcome!
-
-- Fork the repo
-- Create a feature branch (`git checkout -b feature-x`)
-- Write tests and keep them passing (`forge test`)
-- Open a pull request
-
-Please follow Solidity style guides and include NatSpec where relevant.
-
----
-
 ## 🧠 Notes & Assumptions
 
 - Rebasing is **linear**, not compounding
 - Yield accrues over time but **pauses during bridging**
-- Users can only deposit/redeem on **source chains (e.g., L1)**
 - Interest rate is **locked** at deposit time and used in cross-chain minting
-
----
-
-## 🪪 License
-
-This project is licensed under the [MIT License](LICENSE).
 
 ---
 
@@ -194,6 +151,3 @@ This project is licensed under the [MIT License](LICENSE).
 - [Chainlink CCIP](https://chain.link/cross-chain)
 - [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts)
 
----
-
-🧠 If this helped you, consider ⭐ starring the repo and contributing!

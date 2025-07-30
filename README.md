@@ -14,7 +14,6 @@ Cross-chain bridging retains yield and interest rate using Chainlink's CCIP prot
 - [🧪 Tests](#-tests)
 - [🧩 Deployment](#-deployment)
 - [🧾 Usage](#-usage)
-- [📏 Formatting & Linting](#-formatting--linting)
 - [🧠 Notes & Assumptions](#-notes--assumptions)
 
 ---
